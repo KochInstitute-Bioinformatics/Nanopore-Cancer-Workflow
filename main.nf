@@ -17,10 +17,15 @@ nextflow.enable.dsl = 2
 */
 
 def helpMessage() {
+
     log.info"""
     =========================================
      ${workflow.manifest.name} v${workflow.manifest.version}
     =========================================
+    input        : ${params.input}
+    genome       : ${params.genome}
+    fasta        : ${params.fasta ?: 'Using default from ' + params.genome}
+    outdir       : ${params.outdir}
     
     Usage:
     The typical command for running the pipeline is as follows:
@@ -78,7 +83,18 @@ include { NANOPORE_CANCER } from './workflows/nanopore_cancer'
 // WORKFLOW: Run main analysis pipeline
 //
 workflow NANOPORE_CANCER_WORKFLOW {
-    NANOPORE_CANCER ()
+    // Read samplesheet
+    ch_input = Channel
+        .fromPath(params.input, checkIfExists: true)
+        .splitCsv(header: true)
+        .map { row ->
+            [
+                sample_id: row.sample_id,
+                fastq_path: file(row.fastq_path, checkIfExists: true)
+            ]
+        }
+    
+    NANOPORE_CANCER(ch_input)
 }
 
 /*
